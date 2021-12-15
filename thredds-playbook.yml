@@ -1,0 +1,62 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    thredds_war: https://downloads.unidata.ucar.edu/tds/5.2/thredds%2523%25235.2.war
+    content_root: /data/content
+
+  tasks:
+    - name: Update apt cache and make sure Java and Tomcat are installed
+      apt:
+        name: "{{ item }}"
+        update_cache: yes
+      loop:
+        - openjdk-11-jdk
+        - tomcat9
+        - tomcat9-admin
+
+    - name: Create content root directory if it does not exist
+      ansible.builtin.file:
+        path: "{{ content_root }}"
+        state: directory
+        owner: tomcat
+        group: tomcat
+        mode: '0755'
+
+    - name: Create systemd config directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/tomcat9.service.d
+        state: directory
+
+    - name: Apply systemd Tomcat unit config
+      template:
+        src: files/content_root.conf.j2
+        dest: /etc/systemd/system/tomcat9.service.d/content_root.conf
+
+    - name: Apply THREDDS env template
+      template:
+        src: files/tomcat9.j2
+        dest: /etc/default/tomcat9
+      notify: Restart Tomcat
+
+    - name: Check for THREDDS server war
+      stat:
+        path: /var/lib/tomcat9/webapps/thredds.war
+      register: stat_result
+
+    - name: Download THREDDS server
+      get_url:
+        url: "{{ thredds_war }}"
+        dest: /tmp/thredds.war
+      when: not stat_result.stat.exists
+
+    - name: Deploy THREDDS war to Tomcat
+      command: mv /tmp/thredds.war /var/lib/tomcat9/webapps
+      when: not stat_result.stat.exists
+
+  handlers:      
+    - name: Restart Tomcat
+      ansible.builtin.systemd:
+        name: tomcat9.service
+        state: restarted
+        daemon_reload: yes

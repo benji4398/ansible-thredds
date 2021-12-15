@@ -1,0 +1,7 @@
+/var/lib/tomcat9/webapps/thredds/WEB-INF/lib/stax-api-1.0.1.jar
+/var/lib/tomcat9/webapps/thredds/WEB-INF/lib/chronicle-core-2.21ea25.jar
+/var/lib/tomcat9/webapps/thredds/WEB-INF/lib/chronicle-analytics-2.21ea0.jar
+
+https://repo1.maven.org/maven2/stax/stax-api/1.0.1/stax-api-1.0.1.jar
+https://repo1.maven.org/maven2/net/openhft/chronicle-core/2.21ea25/chronicle-core-2.21ea25.jar
+https://repo1.maven.org/maven2/net/openhft/chronicle-analytics/2.21ea0/chronicle-analytics-2.21ea0.jar
