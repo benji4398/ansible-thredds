@@ -1,0 +1,57 @@
+---
+# tasks file for openresty
+- name: Add OpenResty Apt signing key
+  apt_key:
+    url: https://openresty.org/package/pubkey.gpg
+    state: present
+
+- name: Add OpenResty repository into sources list
+  apt_repository:
+    repo: deb http://openresty.org/package/ubuntu focal main
+    filename: openresty
+    state: present
+    update_cache: yes
+
+- name: Install OpenResty
+  apt:
+    name: openresty
+    state: present
+    update_cache: yes
+
+- name: Install OpenResty OpenID Connect
+  command: opm install zmartzone/lua-resty-openidc
+
+- name: Check for SSL certs
+  stat:
+    path: /usr/local/openresty/nginx/ssl/nginx.crt
+  register: cert_stat_result
+
+- name: Create SSL cert directory
+  file:
+    path: /usr/local/openresty/nginx/ssl
+    state: directory
+  when: not cert_stat_result.stat.exists
+
+- name: Generate SSL keys
+  community.crypto.x509_certificate:
+    path: /usr/local/openresty/nginx/ssl/nginx.crt
+    privatekey_path: /usr/local/openresty/nginx/ssl/nginx.key
+    provider: selfsigned
+  when: not cert_stat_result.stat.exists
+
+- name: Apply OpenResty NGINX config
+  copy:
+    src: nginx.conf
+    dest: /usr/local/openresty/nginx/conf/nginx.conf
+
+- name: Copy static files
+  copy:
+    src: html/
+    dest: /usr/local/openresty/nginx/html
+
+- name: Kill running NGINX instances
+  command: killall -v -w nginx
+  ignore_errors: true
+
+- name: Run OpenResty NGINX
+  command: /usr/local/openresty/nginx/sbin/nginx

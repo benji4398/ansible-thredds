@@ -1,0 +1,9 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    thredds_war: https://downloads.unidata.ucar.edu/tds/5.4/thredds-5.4.220203-SNAPSHOT.war
+    content_root: /data/content
+  roles:
+    - openresty
+    - thredds
