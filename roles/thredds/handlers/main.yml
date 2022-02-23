@@ -1,7 +1,15 @@
 ---
 # handlers file for thredds
+# Ubuntu
+# - name: Restart Tomcat
+#   systemd:
+#     name: tomcat9.service
+#     state: restarted
+#     daemon_reload: yes
+# RHEL
 - name: Restart Tomcat
-  ansible.builtin.systemd:
-    name: tomcat9.service
+  systemd:
+    name: tomcat.service
     state: restarted
     daemon_reload: yes
+    enabled: yes

@@ -1,22 +1,37 @@
 ---
 # tasks file for openresty
-- name: Add OpenResty Apt signing key
-  apt_key:
-    url: https://openresty.org/package/pubkey.gpg
-    state: present
+# Ubuntu
+# - name: Add OpenResty Apt signing key
+#   apt_key:
+#     url: https://openresty.org/package/pubkey.gpg
+#     state: present
 
-- name: Add OpenResty repository into sources list
-  apt_repository:
-    repo: deb http://openresty.org/package/ubuntu focal main
-    filename: openresty
-    state: present
-    update_cache: yes
+# - name: Add OpenResty repository into sources list
+#   apt_repository:
+#     repo: deb http://openresty.org/package/ubuntu focal main
+#     filename: openresty
+#     state: present
+#     update_cache: yes
+
+# - name: Install OpenResty
+#   apt:
+#     name: openresty
+#     state: present
+#     update_cache: yes
+# RHEL
+- name: Add OpenResty yum repo
+  copy:
+    src: openresty.repo
+    dest: /etc/yum.repos.d/openresty.repo
 
 - name: Install OpenResty
-  apt:
-    name: openresty
-    state: present
+  yum:
+    name:
+      - openresty
+      - openresty-resty
+      - openresty-opm
     update_cache: yes
+    state: present
 
 - name: Install OpenResty OpenID Connect
   command: opm install zmartzone/lua-resty-openidc
@@ -32,12 +47,20 @@
     state: directory
   when: not cert_stat_result.stat.exists
 
-- name: Generate SSL keys
-  community.crypto.x509_certificate:
-    path: /usr/local/openresty/nginx/ssl/nginx.crt
-    privatekey_path: /usr/local/openresty/nginx/ssl/nginx.key
-    provider: selfsigned
-  when: not cert_stat_result.stat.exists
+# - name: Generate SSL keys
+#   community.crypto.x509_certificate:
+#     path: /usr/local/openresty/nginx/ssl/nginx.crt
+#     privatekey_path: /usr/local/openresty/nginx/ssl/nginx.key
+#     provider: selfsigned
+#   when: not cert_stat_result.stat.exists
+
+- name: Copy SSL certs
+  copy:
+    src: "{{ item }}"
+    dest: /usr/local/openresty/nginx/ssl
+  loop:
+    - server.crt
+    - server.key  
 
 - name: Apply OpenResty NGINX config
   copy:
@@ -50,7 +73,8 @@
     dest: /usr/local/openresty/nginx/html
 
 - name: Kill running NGINX instances
-  command: killall -v -w nginx
+  #command: killall -v -w nginx
+  command: pkill -e nginx
   ignore_errors: true
 
 - name: Run OpenResty NGINX

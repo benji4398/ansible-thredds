@@ -1,13 +1,26 @@
 ---
 # tasks file for thredds
+# Ubuntu
+# - name: Update apt cache and make sure Java and Tomcat are installed
+#   apt:
+#     name: "{{ item }}"
+#     update_cache: yes
+#   loop:
+#     - openjdk-11-jdk
+#     - tomcat9
+#     - tomcat9-admin
+# RHEL
 - name: Update apt cache and make sure Java and Tomcat are installed
-  apt:
-    name: "{{ item }}"
+  yum:
+    name:
+      - java-11-openjdk
+      - tomcat
+      - tomcat-admin-webapps
+      - tomcat-webapps
+      - tomcat-docs-webapp
+      - tomcat-javadoc
     update_cache: yes
-  loop:
-    - openjdk-11-jdk
-    - tomcat9
-    - tomcat9-admin
+    state: present
 
 - name: Create content root directory if it does not exist
   file:
@@ -17,25 +30,51 @@
     group: tomcat
     mode: '0755'
 
+# Ubuntu
+# - name: Create systemd config directory
+#   file:
+#     path: /etc/systemd/system/tomcat9.service.d
+#     state: directory
+
+# - name: Apply systemd Tomcat unit config
+#   template:
+#     src: content_root.conf.j2
+#     dest: /etc/systemd/system/tomcat9.service.d/content_root.conf
+
+# - name: Apply THREDDS env template
+#   template:
+#     src: tomcat9.j2
+#     dest: /etc/default/tomcat9
+#   notify: Restart Tomcat
+
+# - name: Check for THREDDS server war
+#   stat:
+#     path: /var/lib/tomcat9/webapps/thredds.war
+#   register: thredds_stat_result
+
+# - name: Deploy THREDDS war to Tomcat
+#   command: mv /tmp/thredds.war /var/lib/tomcat9/webapps
+#   when: not thredds_stat_result.stat.exists
+# RHEL
 - name: Create systemd config directory
   file:
-    path: /etc/systemd/system/tomcat9.service.d
+    path: /etc/systemd/system/tomcat.service.d
     state: directory
 
 - name: Apply systemd Tomcat unit config
   template:
     src: content_root.conf.j2
-    dest: /etc/systemd/system/tomcat9.service.d/content_root.conf
+    dest: /etc/systemd/system/tomcat.service.d/override.conf
 
 - name: Apply THREDDS env template
   template:
     src: tomcat9.j2
-    dest: /etc/default/tomcat9
+    dest: /etc/sysconfig/tomcat
   notify: Restart Tomcat
 
 - name: Check for THREDDS server war
   stat:
-    path: /var/lib/tomcat9/webapps/thredds.war
+    path: /var/lib/tomcat/webapps/thredds.war
   register: thredds_stat_result
 
 - name: Download THREDDS server
@@ -45,5 +84,5 @@
   when: not thredds_stat_result.stat.exists
 
 - name: Deploy THREDDS war to Tomcat
-  command: mv /tmp/thredds.war /var/lib/tomcat9/webapps
+  command: mv /tmp/thredds.war /var/lib/tomcat/webapps
   when: not thredds_stat_result.stat.exists
