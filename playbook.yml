@@ -2,7 +2,11 @@
 - hosts: all
   become: yes
   vars:
-    thredds_war: https://downloads.unidata.ucar.edu/tds/5.4/thredds-5.4.220203-SNAPSHOT.war
+    tomcat_url: https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.58/bin/apache-tomcat-9.0.58.tar.gz
+    tomcat_tar: apache-tomcat-9.0.58.tar.gz
+    tomcat_untar: apache-tomcat-9.0.58
+    thredds_url: https://downloads.unidata.ucar.edu/tds/5.4/thredds-5.4.220203-SNAPSHOT.war
     content_root: /data/content
   roles:
+    - openresty
     - thredds

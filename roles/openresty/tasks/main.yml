@@ -1,6 +1,7 @@
 ---
 # tasks file for openresty
 # Ubuntu
+##############################################################################
 # - name: Add OpenResty Apt signing key
 #   apt_key:
 #     url: https://openresty.org/package/pubkey.gpg
@@ -18,7 +19,9 @@
 #     name: openresty
 #     state: present
 #     update_cache: yes
+##############################################################################
 # RHEL
+##############################################################################
 - name: Add OpenResty yum repo
   copy:
     src: openresty.repo
@@ -46,13 +49,6 @@
     path: /usr/local/openresty/nginx/ssl
     state: directory
   when: not cert_stat_result.stat.exists
-
-# - name: Generate SSL keys
-#   community.crypto.x509_certificate:
-#     path: /usr/local/openresty/nginx/ssl/nginx.crt
-#     privatekey_path: /usr/local/openresty/nginx/ssl/nginx.key
-#     provider: selfsigned
-#   when: not cert_stat_result.stat.exists
 
 - name: Copy SSL certs
   copy:

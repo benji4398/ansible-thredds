@@ -1,12 +1,4 @@
 ---
-# handlers file for thredds
-# Ubuntu
-# - name: Restart Tomcat
-#   systemd:
-#     name: tomcat9.service
-#     state: restarted
-#     daemon_reload: yes
-# RHEL
 - name: Restart Tomcat
   systemd:
     name: tomcat.service
