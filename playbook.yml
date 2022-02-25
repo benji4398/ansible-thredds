@@ -7,6 +7,8 @@
     tomcat_untar: apache-tomcat-9.0.58
     thredds_url: https://downloads.unidata.ucar.edu/tds/5.4/thredds-5.4.220203-SNAPSHOT.war
     content_root: /data/content
+    data_root: /data/public
   roles:
+    - data
     - openresty
     - thredds

@@ -14,6 +14,7 @@
   yum:
     name:
       - java-11-openjdk-devel
+      - netcdf-devel
     update_cache: yes
     state: present
 
@@ -63,7 +64,13 @@
   template:
     src: tomcat.service.j2
     dest: /etc/systemd/system/tomcat.service
-  notify: Restart Tomcat
+
+- name: Restart Tomcat after setup
+  systemd:
+    name: tomcat.service
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
 
 - name: Create content root directory if it does not exist
   file:
@@ -88,6 +95,30 @@
   command: mv /tmp/thredds.war /opt/tomcat/latest/webapps
   when: not thredds_stat_result.stat.exists
 
-- name: Wait until THREDDS config is present before continuing
+- name: Restart Tomcat after deploying THREDDS
+  systemd:
+    name: tomcat.service
+    state: restarted
+
+- name: Wait until the THREDDS config is present before continuing
   wait_for:
     path: "{{ content_root }}/thredds/threddsConfig.xml"
+
+- name: Apply THREDDS config
+  copy:
+    src: threddsConfig.xml
+    dest: "{{ content_root }}/thredds/threddsConfig.xml"
+    owner: tomcat
+    group: tomcat
+
+- name: Copy THREDDS catalog
+  template:
+    src: catalog.xml.j2
+    dest:  "{{ content_root }}/thredds/catalog.xml"
+    owner: tomcat
+    group: tomcat
+
+- name: Restart Tomcat after configuring THREDDS
+  systemd:
+    name: tomcat.service
+    state: restarted
