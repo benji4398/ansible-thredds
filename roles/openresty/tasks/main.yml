@@ -2,76 +2,99 @@
 # tasks file for openresty
 # Ubuntu
 ##############################################################################
-# - name: Add OpenResty Apt signing key
-#   apt_key:
-#     url: https://openresty.org/package/pubkey.gpg
-#     state: present
+- name: Add repository and install OpenResty
+  tags: setup
+  block:
+    - name: Add OpenResty Apt signing key
+      apt_key:
+        url: https://openresty.org/package/pubkey.gpg
+        state: present
 
-# - name: Add OpenResty repository into sources list
-#   apt_repository:
-#     repo: deb http://openresty.org/package/ubuntu focal main
-#     filename: openresty
-#     state: present
-#     update_cache: yes
+    - name: Add OpenResty repository into sources list
+      apt_repository:
+        repo: deb http://openresty.org/package/ubuntu focal main
+        filename: openresty
+        state: present
+        update_cache: yes
 
-# - name: Install OpenResty
-#   apt:
-#     name: openresty
-#     state: present
-#     update_cache: yes
+    - name: Install OpenResty
+      apt:
+        name: openresty
+        state: present
+        update_cache: yes
 ##############################################################################
 # RHEL
 ##############################################################################
-- name: Add OpenResty yum repo
-  copy:
-    src: openresty.repo
-    dest: /etc/yum.repos.d/openresty.repo
+# - name: Add OpenResty yum repo
+#   copy:
+#     src: openresty.repo
+#     dest: /etc/yum.repos.d/openresty.repo
 
-- name: Install OpenResty
-  yum:
-    name:
-      - openresty
-      - openresty-resty
-      - openresty-opm
-    update_cache: yes
-    state: present
-
+# - name: Install OpenResty
+#   yum:
+#     name:
+#       - openresty
+#       - openresty-resty
+#       - openresty-opm
+#     update_cache: yes
+#     state: present
+##############################################################################
 - name: Install OpenResty OpenID Connect
   command: opm install zmartzone/lua-resty-openidc
+  tags:
+    - setup
 
-- name: Check for SSL certs
-  stat:
-    path: /usr/local/openresty/nginx/ssl/nginx.crt
-  register: cert_stat_result
+- name: Setup SSL server certs
+  tags: config
+  block:
+    - name: Check for SSL certs
+      stat:
+        path: /usr/local/openresty/nginx/ssl/nginx.crt
+      register: cert_stat_result
 
-- name: Create SSL cert directory
-  file:
-    path: /usr/local/openresty/nginx/ssl
-    state: directory
-  when: not cert_stat_result.stat.exists
+    - name: Create SSL cert directory
+      file:
+        path: /usr/local/openresty/nginx/ssl
+        state: directory
+      when: not cert_stat_result.stat.exists
 
-- name: Copy SSL certs
-  copy:
-    src: "{{ item }}"
-    dest: /usr/local/openresty/nginx/ssl
-  loop:
-    - server.crt
-    - server.key  
+    - name: Copy SSL certs
+      copy:
+        src: "{{ item }}"
+        dest: /usr/local/openresty/nginx/ssl
+      loop:
+        - server.crt
+        - server.key
 
 - name: Apply OpenResty NGINX config
   copy:
     src: nginx.conf
     dest: /usr/local/openresty/nginx/conf/nginx.conf
+  tags:
+    - config
+
+- name: Apply OpenId config
+  template:
+    src: access.lua.j2
+    dest: /usr/local/openresty/nginx/conf/access.lua
+  tags:
+    - config
 
 - name: Copy static files
   copy:
     src: html/
     dest: /usr/local/openresty/nginx/html
+  tags:
+    - config
 
 - name: Kill running NGINX instances
   #command: killall -v -w nginx
   command: pkill -e nginx
   ignore_errors: true
+  tags:
+    - config
 
 - name: Run OpenResty NGINX
   command: /usr/local/openresty/nginx/sbin/nginx
+  tags:
+    - config

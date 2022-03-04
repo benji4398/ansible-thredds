@@ -8,6 +8,8 @@
     thredds_url: https://downloads.unidata.ucar.edu/tds/5.4/thredds-5.4.220203-SNAPSHOT.war
     content_root: /data/content
     data_root: /data/public
+  vars_files:
+    - vault.yml
   roles:
     - data
     - openresty

@@ -1,25 +1,45 @@
 ---
 # tasks file for data
-- name: Update yum cache and make sure epel is installed
-  yum:
-    name:
-      - epel-release
-    update_cache: yes
-    state: present
-
-- name: Update yum cache and make sure everything else is installed
-  yum:
+# Ubuntu
+##############################################################################
+- name: Install curlftpfs and sshfs
+  apt:
     name:
       - curlftpfs
-      - fuse-sshfs
+      - sshfs
     update_cache: yes
     state: present
+  tags:
+    - setup
+##############################################################################
+# RHEL
+##############################################################################
+# - name: Update yum cache and make sure epel is installed
+#   yum:
+#     name:
+#       - epel-release
+#     update_cache: yes
+#     state: present
+#   tags:
+#     - setup
 
+# - name: Update yum cache and make sure everything else is installed
+#   yum:
+#     name:
+#       - curlftpfs
+#       - fuse-sshfs
+#     update_cache: yes
+#     state: present
+#   tags:
+#     - setup
+##############################################################################
 - name: Add the tomcat user
   user:
     name: tomcat
     shell: /bin/false
     home: /opt/tomcat
+  tags:
+    - setup
 
 - name: Create mount points if they do not exist
   file:
@@ -30,13 +50,19 @@
   loop:
     - "{{ data_root }}/ndacc"
     - "{{ data_root }}/musica"
+  tags:
+    - config
 
 - name: Mount NDACC
   shell:
     cmd: 'curlftpfs -o "allow_other,uid=$(id -u tomcat),gid=$(id -g tomcat)" ftp.cpc.ncep.noaa.gov/ndacc/station/ {{ data_root }}/ndacc'
   ignore_errors: true
+  tags:
+    - config
 
 - name: Mount NDACC MUSICA
   shell:
     cmd: 'curlftpfs -o "allow_other,uid=$(id -u tomcat),gid=$(id -g tomcat)" ftp.cpc.ncep.noaa.gov/ndacc/MUSICA {{ data_root }}/musica'
   ignore_errors: true
+  tags:
+    - config

@@ -1,0 +1,19 @@
+local opts = {
+    redirect_uri_path = "{{ vault_redirect_uri_path }}",
+    discovery = "{{ vault_discovery }}",
+    client_id = "{{ vault_client_id }}",
+    client_secret = "{{ vault_client_secret }}",
+    scope = "{{ vault_scope }}",
+    redirect_uri_scheme = "{{ vault_redirect_uri_scheme }}",
+  }
+  
+  -- call authenticate for OpenID Connect user authentication
+  local res, err = require("resty.openidc").authenticate(opts)
+  
+  if err then
+    ngx.status = 403
+    ngx.say(err)
+    ngx.exit(ngx.HTTP_FORBIDDEN)
+  end
+  
+  ngx.req.set_header("X-USER", res.id_token.sub)

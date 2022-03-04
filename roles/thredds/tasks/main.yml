@@ -2,107 +2,158 @@
 # tasks file for thredds
 # Ubuntu
 ##############################################################################
-# - name: Update apt cache and make sure Java is installed
-#   apt:
-#     name: openjdk-11-jdk
-#     update_cache: yes
-#     state: present
+- name: Update apt cache and make sure Java and Tomcat are installed
+  apt:
+    name:
+      - openjdk-11-jdk
+      - tomcat9
+      - tomcat9-admin
+    update_cache: yes
+    state: present
+  tags:
+    - setup
+
+- name: Setup Tomcat server
+  tags: setup
+  block:
+    - name: Create systemd config directory
+      file:
+        path: /etc/systemd/system/tomcat9.service.d
+        state: directory
+
+    - name: Apply systemd Tomcat unit config
+      template:
+        src: content_root.conf.j2
+        dest: /etc/systemd/system/tomcat9.service.d/content_root.conf
+
+    - name: Apply THREDDS env template
+      template:
+        src: tomcat9.j2
+        dest: /etc/default/tomcat9
+
+    - name: Create content root directory if it does not exist
+      file:
+        path: "{{ content_root }}"
+        state: directory
+        owner: tomcat
+        group: tomcat
+        mode: '0755'
+
+    - name: Restart Tomcat after setup
+      systemd:
+        name: tomcat9.service
+        state: restarted
+        daemon_reload: yes
 ##############################################################################
 # RHEL
 ##############################################################################
-- name: Update yum cache and make sure Java is installed
-  yum:
-    name:
-      - java-11-openjdk-devel
-      - netcdf-devel
-    update_cache: yes
-    state: present
+# - name: Update yum cache and make sure Java is installed
+#   yum:
+#     name:
+#       - java-11-openjdk-devel
+#       - netcdf-devel
+#     update_cache: yes
+#     state: present
+#   tags:
+#     - setup
+#
+# - name: Setup Tomcat server on RHEL
+#   tags: setup
+#   block:
+#     - name: Add tomcat user
+#       user:
+#         name: tomcat
+#         shell: /bin/false
+#         home: /opt/tomcat
 
-- name: Add the tomcat user
-  user:
-    name: tomcat
-    shell: /bin/false
-    home: /opt/tomcat
+#     - name: Check for Tomcat server
+#       stat:
+#         path: "/tmp/{{ tomcat_tar }}"
+#       register: tomcat_stat_result
 
-- name: Check for Tomcat server
-  stat:
-    path: "/tmp/{{ tomcat_tar }}"
-  register: tomcat_stat_result
+#     - name: Download Tomcat server
+#       get_url:
+#         url: "{{ tomcat_url }}"
+#         dest: /tmp
+#         validate_certs: no
+#       when: not tomcat_stat_result.stat.exists
 
-- name: Download Tomcat server
-  get_url:
-    url: "{{ tomcat_url }}"
-    dest: /tmp
-  when: not tomcat_stat_result.stat.exists
+#     - name: Extract Tomcat server
+#       command: tar -xf "/tmp/{{ tomcat_tar }}" -C /tmp
+#       when: not tomcat_stat_result.stat.exists
 
-- name: Extract Tomcat server
-  command: tar -xf "/tmp/{{ tomcat_tar }}" -C /tmp
-  when: not tomcat_stat_result.stat.exists
+#     - name: Move Tomcat server
+#       command: mv "/tmp/{{ tomcat_untar }}" /opt/tomcat
+#       ignore_errors: true
+#       when: not tomcat_stat_result.stat.exists
 
-- name: Move Tomcat server
-  command: mv "/tmp/{{ tomcat_untar }}" /opt/tomcat
-  ignore_errors: true
-  when: not tomcat_stat_result.stat.exists
+#     - name: Create link to latest Tomcat
+#       file:
+#         src: "/opt/tomcat/{{ tomcat_untar }}"
+#         dest: /opt/tomcat/latest
+#         owner: tomcat
+#         group: tomcat
+#         state: link
 
-- name: Create link to latest Tomcat
-  file:
-    src: "/opt/tomcat/{{ tomcat_untar }}"
-    dest: /opt/tomcat/latest
-    owner: tomcat
-    group: tomcat
-    state: link
+#     - name: Chown Tomcat server
+#       file:
+#         path: /opt/tomcat
+#         owner: tomcat
+#         group: tomcat
+#         recurse: yes
+#         state: directory
 
-- name: Chown Tomcat server
-  file:
-    path: /opt/tomcat
-    owner: tomcat
-    group: tomcat
-    recurse: yes
-    state: directory
+#     - name: Create Tomcat server service
+#       template:
+#         src: tomcat.service.j2
+#         dest: /etc/systemd/system/tomcat.service
 
-- name: Create Tomcat server service
-  template:
-    src: tomcat.service.j2
-    dest: /etc/systemd/system/tomcat.service
+#     - name: Restart Tomcat after setup
+#       systemd:
+#         name: tomcat.service
+#         state: restarted
+#         daemon_reload: yes
+#         enabled: yes
+##############################################################################
+- name: Setup THREDDS server
+  tags: setup
+  block:
+    - name: Create content root directory if it does not exist
+      file:
+        path: "{{ content_root }}"
+        state: directory
+        owner: tomcat
+        group: tomcat
+        mode: '0755'
 
-- name: Restart Tomcat after setup
-  systemd:
-    name: tomcat.service
-    state: restarted
-    daemon_reload: yes
-    enabled: yes
+    - name: Check for THREDDS server war
+      stat:
+        #path: /opt/tomcat/latest/webapps/thredds.war
+        path: /var/lib/tomcat9/webapps/thredds.war
+      register: thredds_stat_result
 
-- name: Create content root directory if it does not exist
-  file:
-    path: "{{ content_root }}"
-    state: directory
-    owner: tomcat
-    group: tomcat
-    mode: '0755'
+    - name: Download THREDDS server
+      get_url:
+        url: "{{ thredds_url }}"
+        dest: /tmp/thredds.war
+      when: not thredds_stat_result.stat.exists
 
-- name: Check for THREDDS server war
-  stat:
-    path: /opt/tomcat/latest/webapps/thredds.war
-  register: thredds_stat_result
+    - name: Deploy THREDDS war to Tomcat
+      #command: mv /tmp/thredds.war /opt/tomcat/latest/webapps
+      command: mv /tmp/thredds.war /var/lib/tomcat9/webapps
+      when: not thredds_stat_result.stat.exists
 
-- name: Download THREDDS server
-  get_url:
-    url: "{{ thredds_url }}"
-    dest: /tmp/thredds.war
-  when: not thredds_stat_result.stat.exists
-
-- name: Deploy THREDDS war to Tomcat
-  command: mv /tmp/thredds.war /opt/tomcat/latest/webapps
-  when: not thredds_stat_result.stat.exists
-
-- name: Restart Tomcat after deploying THREDDS
-  systemd:
-    name: tomcat.service
-    state: restarted
+    - name: Restart Tomcat after deploying THREDDS
+      systemd:
+        name: tomcat9.service
+        state: restarted
+        daemon_reload: yes
 
 - name: Wait until the THREDDS config is present before continuing
   wait_for:
     path: "{{ content_root }}/thredds/threddsConfig.xml"
+  tags:
+    - config
 
 - name: Apply THREDDS config
   copy:
@@ -110,6 +161,8 @@
     dest: "{{ content_root }}/thredds/threddsConfig.xml"
     owner: tomcat
     group: tomcat
+  tags:
+    - config
 
 - name: Copy THREDDS catalog
   template:
@@ -117,8 +170,13 @@
     dest:  "{{ content_root }}/thredds/catalog.xml"
     owner: tomcat
     group: tomcat
+  tags:
+    - config
 
 - name: Restart Tomcat after configuring THREDDS
   systemd:
-    name: tomcat.service
+    name: tomcat9.service
     state: restarted
+    daemon_reload: yes
+  tags:
+    - config
